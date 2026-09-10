@@ -114,27 +114,35 @@
   footer{margin-top:28px;font-size:12px;color:var(--muted);text-align:center}
   footer a{color:var(--muted)}
 
-  @media(prefers-color-scheme:dark){
-    :root{
-      --bg:#111110; --card:#1c1b19; --ink:#e8e6e1; --muted:#8a8782; --line:#2e2d2a;
-      --good:#34c97b; --good-bg:#0d2b1e;
-      --mixed:#e0a72a; --mixed-bg:#2b2010;
-      --poor:#e06060; --poor-bg:#2b1212;
-      --accent:#e8e6e1;
-    }
-    input{background:#1c1b19;color:var(--ink);border-color:var(--line)}
-    input:focus{outline-color:#4a4845}
-    button{background:var(--accent);color:#111110;border-color:var(--accent)}
-    button.go{background:var(--accent);color:#111110}
-    .chip{background:#1c1b19;color:var(--ink);border-color:var(--line)}
-    .opt{background:#1c1b19;color:var(--ink);border-color:var(--line)}
-    .opt:hover{border-color:var(--accent)}
-    .bar i{background:var(--accent)}
+  html[data-theme="dark"]{
+    --bg:#111110; --card:#1c1b19; --ink:#e8e6e1; --muted:#8a8782; --line:#2e2d2a;
+    --good:#34c97b; --good-bg:#0d2b1e;
+    --mixed:#e0a72a; --mixed-bg:#2b2010;
+    --poor:#e06060; --poor-bg:#2b1212;
+    --accent:#e8e6e1;
   }
+  html[data-theme="dark"] input{background:#1c1b19;color:var(--ink);border-color:var(--line)}
+  html[data-theme="dark"] input:focus{outline-color:#4a4845}
+  html[data-theme="dark"] button:not(#theme-toggle){background:var(--accent);color:#111110;border-color:var(--accent)}
+  html[data-theme="dark"] .chip{background:#1c1b19;color:var(--ink);border-color:var(--line)}
+  html[data-theme="dark"] .opt{background:#1c1b19;color:var(--ink);border-color:var(--line)}
+  html[data-theme="dark"] .opt:hover{border-color:var(--accent)}
+  html[data-theme="dark"] .bar i{background:var(--accent)}
+
+  #theme-toggle{
+    position:fixed;top:14px;right:16px;z-index:999;
+    width:34px;height:34px;border-radius:50%;
+    border:1px solid var(--line);background:var(--card);color:var(--ink);
+    font-size:17px;line-height:1;padding:0;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    transition:background .15s,border-color .15s;
+  }
+  #theme-toggle:hover{border-color:var(--muted)}
 </style>
 </head>
 <body>
 <div class="wrap">
+  <button id="theme-toggle" aria-label="Toggle dark mode">🌙</button>
   <header>
     <h1>Should I Go?</h1>
     <p>A city, your dates, and a straight answer for each day.</p>
@@ -169,6 +177,37 @@
 
 <script>
 "use strict";
+
+/* ── Theme toggle ─────────────────────────────────────────────────────────── */
+(function () {
+  var root = document.documentElement;
+  var btn  = document.getElementById("theme-toggle");
+  var stored = localStorage.getItem("theme");
+  var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  var isDark = stored ? stored === "dark" : prefersDark;
+
+  function applyTheme(dark) {
+    if (dark) {
+      root.setAttribute("data-theme", "dark");
+      btn.textContent = "☀️";
+      btn.setAttribute("aria-label", "Switch to light mode");
+    } else {
+      root.removeAttribute("data-theme");
+      btn.textContent = "🌙";
+      btn.setAttribute("aria-label", "Switch to dark mode");
+    }
+  }
+
+  applyTheme(isDark);
+
+  btn.addEventListener("click", function () {
+    var dark = root.getAttribute("data-theme") === "dark";
+    applyTheme(!dark);
+    localStorage.setItem("theme", !dark ? "dark" : "light");
+  });
+})();
+
+/* ── Main app ─────────────────────────────────────────────────────────────── */
 (function () {
   var MAX_AHEAD = 14; // days from today the user may plan for
 
