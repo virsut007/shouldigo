@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Should I Go? — trip weather, decided</title>
+<meta name="description" content="Enter a city and your travel dates. Get a verdict for each day and one packing list — not a wall of numbers.">
+<link rel="icon" type="image/png" href="favicon.png">
+<style>
+  :root{
+    --bg:#fbfaf8; --card:#fff; --ink:#16181d; --muted:#6b7280; --line:#e6e4df;
+    --good:#127a4b; --good-bg:#e8f6ee;
+    --mixed:#8a5a00; --mixed-bg:#fdf3e0;
+    --poor:#a52a2a; --poor-bg:#fdecec;
+    --accent:#16181d;
+    --r:12px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--bg); color:var(--ink);
+    font:16px/1.5 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding:24px 16px 64px;
+  }
+  .wrap{max-width:720px;margin:0 auto}
+  header h1{font-size:22px;margin:0 0 4px;letter-spacing:-.02em}
+  header p{margin:0;color:var(--muted);font-size:14px}
+  .who{margin-top:8px;font-size:12.5px;color:var(--muted);border-left:2px solid var(--line);padding-left:10px}
+
+  form{margin:20px 0 0;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .f{flex:1 1 160px;min-width:0}
+  label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin:0 0 4px}
+  input{
+    width:100%;padding:10px 11px;border:1px solid var(--line);border-radius:8px;
+    font:inherit;font-size:15px;background:#fff;color:var(--ink);
+  }
+  input:focus{outline:2px solid #c9c6bf;outline-offset:1px}
+  button{
+    font:inherit;font-weight:600;cursor:pointer;border-radius:8px;border:1px solid var(--accent);
+    background:var(--accent);color:#fff;padding:10px 16px;
+  }
+  button:disabled{opacity:.55;cursor:default}
+  .go{margin-top:10px;width:100%}
+  @media(min-width:560px){.go{width:auto}}
+  .hint{font-size:12px;color:var(--muted);margin:8px 0 0}
+
+  .panel{margin-top:18px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+  .muted{color:var(--muted)}
+  .small{font-size:13px}
+
+  /* empty state */
+  .empty{padding:22px 16px;text-align:left}
+  .empty h2{font-size:15px;margin:0 0 8px}
+  .empty ol{margin:0;padding-left:18px;color:var(--muted);font-size:14px}
+  .empty li{margin-bottom:4px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+  .chip{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:500}
+
+  /* loading */
+  .steps{list-style:none;margin:0;padding:0;font-size:14px}
+  .steps li{padding:5px 0;color:var(--muted)}
+  .steps li.on{color:var(--ink);font-weight:600}
+  .steps li.done{color:var(--good)}
+  .bar{height:3px;background:var(--line);border-radius:3px;overflow:hidden;margin-bottom:12px}
+  .bar i{display:block;height:100%;width:30%;background:var(--accent);animation:slide 1.1s ease-in-out infinite}
+  @keyframes slide{0%{margin-left:-30%}100%{margin-left:100%}}
+
+  /* error */
+  .err{border-color:#f0c9c9;background:var(--poor-bg)}
+  .err h2{margin:0 0 6px;font-size:15px;color:var(--poor)}
+  .err p{margin:0;font-size:14px}
+  .err ul{margin:8px 0 0;padding-left:18px;font-size:13.5px;color:var(--muted)}
+
+  /* picker */
+  .pick h2{font-size:15px;margin:0 0 2px}
+  .pick > p{margin:0 0 10px;font-size:13px;color:var(--muted)}
+  .opt{display:block;width:100%;text-align:left;background:#fff;color:var(--ink);border:1px solid var(--line);
+       border-radius:9px;padding:10px 12px;margin-bottom:8px;font-weight:500}
+  .opt:hover{border-color:var(--accent)}
+  .opt b{display:block;font-size:15px}
+  .opt span{display:block;font-size:12.5px;color:var(--muted);font-weight:400;margin-top:2px}
+
+  /* results */
+  .summary{border-left:4px solid var(--accent);padding:16px 16px 16px 14px}
+  .summary .kicker{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 6px}
+  .summary h2{margin:0;font-size:20px;line-height:1.35;letter-spacing:-.01em}
+  .summary .meta{margin:10px 0 0;font-size:13px;color:var(--muted)}
+
+  h3.sec{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:22px 0 8px;font-weight:700}
+
+  .day{border:1px solid var(--line);border-radius:var(--r);background:var(--card);padding:13px 14px;margin-bottom:9px}
+  .day .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  .day .date{font-size:12.5px;color:var(--muted);font-weight:600}
+  .tag{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:999px;white-space:nowrap}
+  .good .tag{background:var(--good-bg);color:var(--good)}
+  .mixed .tag{background:var(--mixed-bg);color:var(--mixed)}
+  .poor .tag{background:var(--poor-bg);color:var(--poor)}
+  .day.good{border-left:4px solid var(--good)}
+  .day.mixed{border-left:4px solid var(--mixed)}
+  .day.poor{border-left:4px solid var(--poor)}
+  .verdict{margin:7px 0 0;font-size:16.5px;line-height:1.4;font-weight:600;letter-spacing:-.01em}
+  .nums{margin:9px 0 0;font-size:12.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 14px}
+
+  .pack ul{list-style:none;margin:0;padding:0;column-gap:24px}
+  @media(min-width:560px){.pack ul{columns:2}}
+  .pack li{padding:5px 0;font-size:14.5px;break-inside:avoid}
+  .pack li span{color:var(--muted);font-size:12.5px}
+  .why{margin-top:10px;font-size:12.5px;color:var(--muted)}
+  details summary{cursor:pointer;font-size:12.5px;color:var(--muted);margin-top:14px}
+  details p{font-size:12.5px;color:var(--muted);line-height:1.6}
+  footer{margin-top:28px;font-size:12px;color:var(--muted);text-align:center}
+  footer a{color:var(--muted)}
+
+  @media(prefers-color-scheme:dark){
+    :root{
+      --bg:#111110; --card:#1c1b19; --ink:#e8e6e1; --muted:#8a8782; --line:#2e2d2a;
+      --good:#34c97b; --good-bg:#0d2b1e;
+      --mixed:#e0a72a; --mixed-bg:#2b2010;
+      --poor:#e06060; --poor-bg:#2b1212;
+      --accent:#e8e6e1;
+    }
+    input{background:#1c1b19;color:var(--ink);border-color:var(--line)}
+    input:focus{outline-color:#4a4845}
+    button{background:var(--accent);color:#111110;border-color:var(--accent)}
+    button.go{background:var(--accent);color:#111110}
+    .chip{background:#1c1b19;color:var(--ink);border-color:var(--line)}
+    .opt{background:#1c1b19;color:var(--ink);border-color:var(--line)}
+    .opt:hover{border-color:var(--accent)}
+    .bar i{background:var(--accent)}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Should I Go?</h1>
+    <p>A city, your dates, and a straight answer for each day.</p>
+    <p class="who">Advice is written for one person: <strong>an independent leisure traveller who plans to be outside on foot most of the day</strong> — sightseeing, walking, markets, viewpoints. Not a trekker, not a wedding guest.</p>
+  </header>
+
+  <form id="form" novalidate>
+    <div class="row">
+      <div class="f" style="flex:1 1 100%">
+        <label for="city">City</label>
+        <input id="city" name="city" type="text" placeholder="e.g. New Delhi" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="f">
+        <label for="start">First day</label>
+        <input id="start" name="start" type="date">
+      </div>
+      <div class="f">
+        <label for="end">Last day</label>
+        <input id="end" name="end" type="date">
+      </div>
+    </div>
+    <button class="go" type="submit" id="submit">Get the verdict</button>
+    <p class="hint" id="hint"></p>
+  </form>
+
+  <div class="panel" id="panel" aria-live="polite"></div>
+
+  <footer>
+    Live data from <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a>, fetched in your browser each time you search. No key, no storage.
+  </footer>
+</div>
+
+<script>
+"use strict";
+(function () {
+  var MAX_AHEAD = 14; // days from today the user may plan for
+
+  var $ = function (id) { return document.getElementById(id); };
+  var panel = $("panel"), form = $("form"), cityEl = $("city"),
+      startEl = $("start"), endEl = $("end"), submitEl = $("submit"), hintEl = $("hint");
+
+  /* ---------- date helpers (all local, no UTC drift) ---------- */
+  function iso(d) {
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+  function today() { var d = new Date(); d.setHours(0, 0, 0, 0); return d; }
+  function addDays(d, n) { var x = new Date(d.getTime()); x.setDate(x.getDate() + n); return x; }
+  function parseISO(s) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s || "")) return null;
+    var p = s.split("-").map(Number);
+    var d = new Date(p[0], p[1] - 1, p[2]);
+    if (d.getFullYear() !== p[0] || d.getMonth() !== p[1] - 1 || d.getDate() !== p[2]) return null;
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+  function dayCount(a, b) { return Math.round((b - a) / 86400000) + 1; }
+  function pretty(isoStr) {
+    var d = parseISO(isoStr);
+    if (!d) return isoStr;
+    return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+  }
+
+  var T = today(), LIMIT = addDays(T, MAX_AHEAD);
+  startEl.min = endEl.min = iso(T);
+  startEl.max = endEl.max = iso(LIMIT);
+  startEl.value = iso(T);
+  endEl.value = iso(addDays(T, 4));
+  hintEl.textContent = "Anything up to " + pretty(iso(LIMIT)) + " works — forecasts past 14 days are guesswork, so we don't pretend.";
+
+  /* =========================================================================
+     THE JUDGEMENT LAYER
+     Signals used: apparent max temp, min temp, rain probability, rain total,
+     UV index, max wind, and hourly rain probability (for timing only).
+     Deliberately ignored: weather codes, humidity, sunrise/sunset, snow depth.
+     Each rule returns a severity (1 nuisance / 2 plan around it / 3 don't).
+     ========================================================================= */
+  var RULES = [
+    // --- rain -------------------------------------------------------------
+    { id:"rain3", sev:3, lead:"Heavy rain",
+      advice:"treat this as an indoor day and keep the walking short",
+      pack:[["Proper rain jacket","waterproof, not water-resistant","rain-outer"],["Waterproof shoes","","wet-feet"],["Dry bag for phone and documents","","dry-bag"]],
+      test:function(d){ return d.rainSum >= 15 || (d.rainProb >= 80 && d.rainSum >= 6); } },
+    { id:"rain2", sev:2, lead:"Rain is likely",
+      advice:"keep a flexible plan and something indoors in reserve",
+      pack:[["Compact umbrella","","rain-cover"],["Rain jacket or poncho","","rain-outer"],["Quick-dry footwear","","wet-feet"]],
+      test:function(d){ return d.rainProb >= 55 || d.rainSum >= 4; } },
+    { id:"rain1", sev:1, lead:"A chance of showers",
+      advice:"carry something light for rain and carry on as planned",
+      pack:[["Compact umbrella","","rain-cover"]],
+      test:function(d){ return d.rainProb >= 30 || d.rainSum >= 1; } },
+    // --- heat -------------------------------------------------------------
+    { id:"heat3", sev:3, lead:"Dangerous heat",
+      advice:"be out early, hide from 11am to 4pm, and drink more than you think you need",
+      pack:[["Wide-brim hat","","head"],["Refillable water bottle","1L or more","water"],["Electrolyte sachets","","salts"],["Loose light-coloured cotton or linen","","warm-clothes"]],
+      test:function(d){ return d.feels >= 40; } },
+    { id:"heat2", sev:2, lead:"Hot enough to wear you down",
+      advice:"front-load the sightseeing into the morning and pace the afternoon",
+      pack:[["Sun hat or cap","","head"],["Refillable water bottle","","water"],["Breathable light clothing","","warm-clothes"]],
+      test:function(d){ return d.feels >= 33; } },
+    // --- cold -------------------------------------------------------------
+    { id:"cold3", sev:3, lead:"Properly freezing",
+      advice:"limit how long you're out in one stretch and plan warm stops",
+      pack:[["Insulated winter coat","","cold-outer"],["Thermal base layer","","base"],["Gloves, beanie and scarf","","extremities"],["Warm waterproof shoes","","wet-feet"]],
+      test:function(d){ return d.min <= -5 || d.max <= 2; } },
+    { id:"cold2", sev:2, lead:"Cold",
+      advice:"dress for it and you'll be fine outside all day",
+      pack:[["Warm jacket","","cold-outer"],["Gloves and a beanie","","extremities"],["Long trousers","","cold-legs"]],
+      test:function(d){ return d.min <= 4 || d.max <= 10; } },
+    { id:"cold1", sev:1, lead:"Chilly at the ends of the day",
+      advice:"take a layer for the morning and evening",
+      pack:[["Light jacket or fleece","","cold-outer"]],
+      test:function(d){ return d.min <= 12; } },
+    // --- wind -------------------------------------------------------------
+    { id:"wind3", sev:3, lead:"Strong wind",
+      advice:"skip exposed viewpoints, waterfronts and anything high up",
+      pack:[["Windproof outer layer","","wind-outer"],["Skip the loose hat","it will not survive","head"]],
+      test:function(d){ return d.wind >= 50; } },
+    { id:"wind2", sev:2, lead:"Windy",
+      advice:"an umbrella will fight you, so wear the jacket instead",
+      pack:[["Windproof jacket","","wind-outer"]],
+      test:function(d){ return d.wind >= 32; } },
+    // --- sun --------------------------------------------------------------
+    { id:"uv2", sev:2, lead:"Extreme UV",
+      advice:"stay in the shade near midday even though it may not feel hot",
+      pack:[["SPF 50 sunscreen","","sunscreen"],["Sunglasses","","shades"],["Hat with a brim","","head"]],
+      test:function(d){ return d.uv >= 10; } },
+    { id:"uv1", sev:1, lead:"Strong sun",
+      advice:"sunscreen in the morning and you're set",
+      pack:[["SPF 30+ sunscreen","","sunscreen"],["Sunglasses","","shades"]],
+      test:function(d){ return d.uv >= 7; } }
+  ];
+  // Only the worst rule inside a family may fire — no "cold and chilly".
+  function family(id) { return id.replace(/\d$/, ""); }
+
+  function num(v) { return (typeof v === "number" && isFinite(v)) ? v : null; }
+
+  function blockWetness(hourlyTimes, hourlyProb, dateStr) {
+    // mean rain probability for morning (06-11), midday (12-16), evening (17-21)
+    var b = { morning:[], midday:[], evening:[] };
+    if (!hourlyTimes || !hourlyProb) return null;
+    for (var i = 0; i < hourlyTimes.length; i++) {
+      var t = hourlyTimes[i];
+      if (t.slice(0, 10) !== dateStr) continue;
+      var p = num(hourlyProb[i]);
+      if (p === null) continue;
+      var h = parseInt(t.slice(11, 13), 10);
+      if (h >= 6 && h <= 11) b.morning.push(p);
+      else if (h >= 12 && h <= 16) b.midday.push(p);
+      else if (h >= 17 && h <= 21) b.evening.push(p);
+    }
+    var out = {}, any = false;
+    for (var k in b) {
+      if (!b[k].length) { out[k] = null; continue; }
+      any = true;
+      out[k] = b[k].reduce(function (s, x) { return s + x; }, 0) / b[k].length;
+    }
+    return any ? out : null;
+  }
+
+  function timingLine(blocks) {
+    if (!blocks) return null;
+    var names = { morning:"morning", midday:"middle of the day", evening:"evening" };
+    var keys = ["morning", "midday", "evening"].filter(function (k) { return blocks[k] !== null; });
+    if (keys.length < 2) return null;
+    var wettest = keys.reduce(function (a, k) { return blocks[k] > blocks[a] ? k : a; }, keys[0]);
+    var driest  = keys.reduce(function (a, k) { return blocks[k] < blocks[a] ? k : a; }, keys[0]);
+    if (blocks[wettest] < 45 || blocks[wettest] - blocks[driest] < 25) return null;
+    return { wettest:names[wettest], driest:names[driest],
+             text:"Wettest in the " + names[wettest] + ", clearest in the " + names[driest] + "." };
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  // Deterministic pick: mixes several weather values so the same day always
+  // gets the same comment, but adjacent days with slightly different numbers
+  // land on different entries in the pool.
+  function pick(pool, d) {
+    var seed = Math.round(Math.abs((d.feels || 0) * 3 + (d.rainProb || 0) * 7 + (d.wind || 0) * 5 + (d.uv || 0) * 11 + (d.rainSum || 0) * 13));
+    return pool[seed % pool.length];
+  }
+  function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+
+  // ── Clear-day verdicts: reflect the actual temp feel ──────────────────────
+  function buildClearDayVerdict(d) {
+    if (d.feels >= 28) {
+      return pick([
+        "Warm and clear — the kind of day the whole trip was planned around. Get out early and stay as long as you like.",
+        "Pleasantly warm with nothing to work around. Great light in the morning, golden hour in the evening.",
+        "A full day outside with nothing holding you back. Grab water and stay comfortable in the heat.",
+        "Warm and open — ideal for covering the most ground. Sunscreen is your only checklist item.",
+        "Comfortable warmth, decent sun, nothing disruptive. A great day to be outside all day.",
+        "Solid warmth and clear skies. The forecast owes you nothing extra — enjoy every hour of it."
+      ], d);
+    }
+    if (d.feels <= 8) {
+      return pick([
+        "Cold air, clear sky — an underrated combination for walking. Layer up and you'll cover a lot of ground.",
+        "Crisp and calm with no rain or wind to worry about. Keep moving and you'll stay warm enough.",
+        "A cool but genuinely comfortable day outdoors. One good layer and you're set for the full day.",
+        "The cold is manageable and there's nothing else to work around. A great day for the bigger walks.",
+        "Cool, quiet, and clear — perfect if you're happy in a jacket. Nothing to plan around.",
+        "Brisk but fine. The kind of day where a hot drink at midday earns its place."
+      ], d);
+    }
+    return pick([
+      "Forecast looks clean — nothing to plan around. A day you can fill from morning to night.",
+      "No issues anywhere in the forecast. Go wherever you want, whenever you want.",
+      "Straightforward conditions all day. The kind of forecast that lets you forget about the weather entirely.",
+      "Clear skies, comfortable temperature, calm air. This is as good as it gets for outdoor plans.",
+      "A genuinely easy day — the weather stays out of your way from start to finish.",
+      "Nothing disruptive in the forecast. It's just a good day to be outside.",
+      "Conditions are steady and favourable. You won't need to check the sky once today.",
+      "Comfortable and calm — ideal for walking, exploring, or just sitting somewhere and watching the city.",
+      "The forecast hands this day to you. No adjustments needed, no backup plan required.",
+      "Mild and clear. One of those days where sightseeing just flows."
+    ], d);
+  }
+
+  // ── Minor-issue verdicts: vary by what actually fired ─────────────────────
+  function buildMinorVerdict(d, fired) {
+    var ids = fired.map(function(r){ return r.id; });
+    var hasRain = ids.some(function(id){ return id.indexOf("rain") === 0; });
+    var hasSun  = ids.some(function(id){ return id === "uv1"; });
+    var hasCold = ids.some(function(id){ return id === "cold1"; });
+
+    if (hasRain && hasSun) {
+      return pick([
+        "A few showers possible but otherwise sunny — sunscreen in the morning, umbrella in the bag.",
+        "Sun and the odd shower in the same day. Dress for sun; treat the umbrella as a precaution.",
+        "Partly cloudy with a shower chance. Pack both sunscreen and a rain cover — everything else is fine."
+      ], d);
+    }
+    if (hasRain) {
+      return pick([
+        "There's a rain chance, but a good day overall — " + fired[0].advice + ".",
+        "Might catch a shower, nothing more. Keep something waterproof handy and carry on.",
+        "A passing shower is possible — " + fired[0].advice + ". Shouldn't ruin the day.",
+        "Showers are on the table but the window is mostly open. " + cap(fired[0].advice) + " and you're fine.",
+        "Low rain risk — worth packing an umbrella just in case, but don't let it change your plans.",
+        "Rain is possible but far from certain. " + cap(fired[0].advice) + "."
+      ], d);
+    }
+    if (hasCold) {
+      return pick([
+        "Chilly at the edges of the day — " + fired[0].advice + ". Fine in the middle.",
+        "A jacket for the morning and evening is all this day asks of you.",
+        "It'll feel cool early and late. One good layer takes care of it — the core hours are comfortable.",
+        "Mornings and evenings have a bite to them. " + cap(fired[0].advice) + ".",
+        "Slightly cool, otherwise clear. A light layer and you'll not notice the temperature at all."
+      ], d);
+    }
+    if (hasSun) {
+      return pick([
+        "Strong sun worth protecting against — " + fired[0].advice + ". Otherwise a great day.",
+        "UV is up there — sunscreen on before you head out. Everything else is in your favour.",
+        "Plenty of sun today. " + cap(fired[0].advice) + ". The conditions are otherwise ideal.",
+        "Good light and strong UV. Hat and sunscreen are the only items on the checklist."
+      ], d);
+    }
+    var advices = fired.slice(0, 2).map(function(r){ return r.advice; });
+    return pick([
+      "A good day to be outdoors — " + advices.join(", and ") + ".",
+      "Mostly fine with one small thing to note: " + advices[0] + ".",
+      "Nothing serious — just " + advices[0] + ". Enjoy the day.",
+      "Good overall. The only nudge: " + advices[0] + "."
+    ], d);
+  }
+
+  // ── Serious-issue verdicts: specific language, not boilerplate ─────────────
+  function buildSeriousVerdict(d, fired) {
+    var serious = fired.filter(function(r){ return r.sev >= 2; }).slice(0, 2);
+    var top = serious[0];
+
+    if (top.id === "rain3") {
+      return pick([
+        "Heavy rain expected — " + top.advice + ". Save the walking for another day.",
+        "This is a wet one. " + cap(top.advice) + ". A museum or a long lunch works better than any outdoor plan.",
+        "Rain is the whole story today. " + cap(top.advice) + ".",
+        "The forecast is against you — heavy rain all through the day. " + cap(top.advice) + ".",
+        "Not a day for the outdoors. " + cap(top.advice) + "; you'll be glad you did."
+      ], d);
+    }
+    if (top.id === "rain2") {
+      if (serious.length > 1) {
+        var leads2 = serious.map(function(r, i){ return i ? r.lead.toLowerCase() : r.lead; });
+        return leads2.join(" and ") + " — " + top.advice + ".";
+      }
+      return pick([
+        "Rain is likely — " + top.advice + ".",
+        "The forecast leans wet. " + cap(top.advice) + " and keep the flexible parts of your day loose.",
+        "Expect real rain today. " + cap(top.advice) + ".",
+        "A wet-leaning day. " + cap(top.advice) + ".",
+        "Rain is probable. " + cap(top.advice) + " — an indoor option is worth having."
+      ], d);
+    }
+    if (top.id === "heat3") {
+      return pick([
+        "Dangerous heat — " + top.advice + ".",
+        "This is serious heat. " + cap(top.advice) + ". Don't underestimate what midday does to you.",
+        "Heat is the story today. " + cap(top.advice) + " — your body will thank you.",
+        "The temperature peaks at a level that can genuinely hurt. " + cap(top.advice) + ".",
+        "Extreme heat alert. " + cap(top.advice) + " and take it seriously."
+      ], d);
+    }
+    if (top.id === "heat2") {
+      return pick([
+        "Hot enough to wear you down — " + top.advice + ".",
+        "It's going to be hot. " + cap(top.advice) + " and pace yourself through the afternoon.",
+        "The heat will pile up through the morning. " + cap(top.advice) + ".",
+        "A hot day — best tackled early. " + cap(top.advice) + ".",
+        "Heat will be the limiting factor. " + cap(top.advice) + "."
+      ], d);
+    }
+    if (top.id === "cold3") {
+      return pick([
+        "Properly freezing — " + top.advice + ".",
+        "This is real winter cold. " + cap(top.advice) + " and dress for it seriously.",
+        "The temperature drops to a level that limits how long you can stay out. " + cap(top.advice) + ".",
+        "Severe cold today. " + cap(top.advice) + ".",
+        "Brutal cold — " + top.advice + ". Short bursts outside with warm stops in between."
+      ], d);
+    }
+    if (top.id === "wind3") {
+      return pick([
+        "Strong wind today — " + top.advice + ".",
+        "The wind is the main issue. " + cap(top.advice) + ".",
+        "Expect gusty, disruptive conditions. " + cap(top.advice) + ".",
+        "Wind will dominate the day. " + cap(top.advice) + ".",
+        "It's going to be blustery. " + cap(top.advice) + " — rethink any exposed spots."
+      ], d);
+    }
+    // General multi-issue fallback
+    var leads = serious.map(function(r, i){ return i ? r.lead.toLowerCase() : r.lead; });
+    return leads.join(" and ") + " — " + top.advice + ".";
+  }
+
+  function judge(d) {
+    var fired = [], seen = {};
+    for (var i = 0; i < RULES.length; i++) {
+      var r = RULES[i];
+      if (seen[family(r.id)]) continue;
+      var ok;
+      try { ok = r.test(d); } catch (e) { ok = false; }
+      if (ok) { seen[family(r.id)] = true; fired.push(r); }
+    }
+    fired.sort(function (a, b) { return b.sev - a.sev; });
+
+    var maxSev = fired.length ? fired[0].sev : 0;
+    var rating = maxSev >= 3 ? "poor" : maxSev === 2 ? "mixed" : "good";
+    var tag = maxSev >= 3 ? "Stay flexible" : maxSev === 2 ? "Plan around it" : "Go out";
+
+    var verdict;
+    if (!fired.length) {
+      verdict = buildClearDayVerdict(d);
+    } else if (maxSev === 1) {
+      verdict = buildMinorVerdict(d, fired);
+    } else {
+      verdict = buildSeriousVerdict(d, fired);
+    }
+
+    // Rain timing rewrites the instruction, because "when" beats "whether".
+    var timing = timingLine(d.blocks);
+    if (timing && fired.some(function (r) { return r.id.indexOf("rain") === 0; })) {
+      verdict = verdict.replace(/ — .*\.$/, " — keep the " + timing.wettest + " indoors and head out in the " + timing.driest + ".");
+      if (maxSev === 1) verdict = "Showers around, mostly in the " + timing.wettest + " — plan the outdoor half for the " + timing.driest + ".";
+    }
+
+    return { rating:rating, tag:tag, verdict:verdict, fired:fired, sev:maxSev, timing:timing };
+  }
+
+  function buildPacking(days, spread) {
+    // One list for the trip. Items are keyed by concept, and the most demanding
+    // version of a concept wins — you take the waterproof jacket, not the jacket
+    // AND the poncho AND the umbrella, just because three days each asked once.
+    var byConcept = {};
+    days.forEach(function (day) {
+      day.judged.fired.forEach(function (r) {
+        r.pack.forEach(function (p) {
+          var concept = p[2] || p[0].toLowerCase();
+          var cur = byConcept[concept];
+          if (!cur || r.sev > cur.sev) byConcept[concept] = { item:p[0], note:p[1], sev:r.sev };
+        });
+      });
+    });
+    var list = Object.keys(byConcept).map(function (k) { return byConcept[k]; });
+    if (spread >= 12) list.push({ item:"Layers you can add and shed", note:"the trip swings " + Math.round(spread) + "°C end to end", sev:2 });
+    if (!list.length) list.push({ item:"Nothing special", note:"normal clothes and comfortable shoes cover this trip", sev:0 });
+    list.sort(function (a, b) { return b.sev - a.sev; });
+    return list;
+  }
+
+  function summarise(days, place) {
+    var n = days.length;
+    var good = days.filter(function (d) { return d.judged.rating === "good"; }).length;
+    var poor = days.filter(function (d) { return d.judged.rating === "poor"; }).length;
+    var mixed = n - good - poor;
+
+    var counts = {};
+    days.forEach(function (d) {
+      d.judged.fired.filter(function (r) { return r.sev >= 2; })
+        .forEach(function (r) { var f = family(r.id); counts[f] = (counts[f] || 0) + 1; });
+    });
+    var theme = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; })[0];
+    var themeWord = { rain:"rain", heat:"heat", cold:"cold", wind:"wind", uv:"strong sun" }[theme];
+
+    var head;
+    if (poor === 0 && mixed === 0) head = n === 1 ? "This looks like a good day for it." : "This is a good window — all " + n + " days are yours to spend outside.";
+    else if (poor === 0) head = good + " of " + n + " days are clear, the rest just need planning around.";
+    else if (poor >= n - poor) head = "A rough window — " + poor + " of " + n + " days will push you indoors.";
+    else if (good === 0) head = "No standout days, but nothing lost either — " + mixed + " are workable with a plan and " + poor + " " + (poor === 1 ? "is" : "are") + " best spent indoors.";
+    else head = good + " clear " + (good === 1 ? "day" : "days") + ", " + mixed + " workable, " + poor + " to write off outdoors.";
+
+    var tail = themeWord ? " " + (poor + mixed > 1 ? "The recurring problem is " : "The thing to plan for is ") + themeWord + "." : "";
+    return { head:head + tail, good:good, mixed:mixed, poor:poor };
+  }
+
+  /* ---------- rendering ---------- */
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+    });
+  }
+
+  function renderEmpty() {
+    panel.innerHTML =
+      '<div class="card empty">' +
+        '<h2>Tell me where and when.</h2>' +
+        '<ol>' +
+          '<li>We look your city up — and if the name is ambiguous, you pick which one.</li>' +
+          '<li>We pull the live forecast for exactly your dates.</li>' +
+          '<li>You get one sentence per day, one packing list, one answer.</li>' +
+        '</ol>' +
+        '<div class="chips">' +
+          '<button class="chip" data-city="Jaipur" type="button">Jaipur</button>' +
+          '<button class="chip" data-city="New Delhi" type="button">New Delhi</button>' +
+          '<button class="chip" data-city="Springfield" type="button">Springfield</button>' +
+          '<button class="chip" data-city="Reykjavik" type="button">Reykjavik</button>' +
+        '</div>' +
+      '</div>';
+    Array.prototype.forEach.call(panel.querySelectorAll(".chip"), function (b) {
+      b.addEventListener("click", function () { cityEl.value = b.getAttribute("data-city"); run(); });
+    });
+  }
+
+  function renderLoading(step) {
+    var steps = ["Finding the city", "Pulling the live forecast", "Working out what it means"];
+    panel.innerHTML =
+      '<div class="card"><div class="bar"><i></i></div><ul class="steps">' +
+      steps.map(function (s, i) {
+        return '<li class="' + (i < step ? "done" : i === step ? "on" : "") + '">' +
+               (i < step ? "✓ " : "") + esc(s) + (i === step ? "…" : "") + '</li>';
+      }).join("") + '</ul></div>';
+  }
+
+  function renderError(title, msg, tips) {
+    panel.innerHTML =
+      '<div class="card err">' +
+        '<h2>' + esc(title) + '</h2>' +
+        '<p>' + esc(msg) + '</p>' +
+        (tips && tips.length ? '<ul>' + tips.map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("") + '</ul>' : "") +
+      '</div>';
+  }
+
+  function placeLabel(p) {
+    return [p.name, p.admin1, p.country].filter(Boolean).join(", ");
+  }
+
+  function renderPicker(results, onPick) {
+    var html =
+      '<div class="card pick"><h2>Which ' + esc(results[0].name) + '?</h2>' +
+      '<p>' + results.length + ' places match that name. We are not going to guess for you.</p>';
+    results.forEach(function (p, i) {
+      var sub = [p.admin1, p.country].filter(Boolean).join(" · ");
+      if (p.population) sub += " · pop. " + p.population.toLocaleString();
+      html += '<button class="opt" type="button" data-i="' + i + '"><b>' + esc(p.name) + '</b><span>' + esc(sub) + '</span></button>';
+    });
+    html += '</div>';
+    panel.innerHTML = html;
+    Array.prototype.forEach.call(panel.querySelectorAll(".opt"), function (b) {
+      b.addEventListener("click", function () { onPick(results[+b.getAttribute("data-i")]); });
+    });
+  }
+
+  function fmt(v, unit, dp) {
+    if (v === null) return "—";
+    return (dp ? v.toFixed(dp) : Math.round(v)) + unit;
+  }
+
+  function renderResults(place, days, sum, packing) {
+    var html =
+      '<div class="card summary">' +
+        '<p class="kicker">How this trip is looking</p>' +
+        '<h2>' + esc(sum.head) + '</h2>' +
+        '<p class="meta">' + esc(placeLabel(place)) + ' · ' + esc(pretty(days[0].date)) +
+          (days.length > 1 ? ' → ' + esc(pretty(days[days.length - 1].date)) : "") +
+          ' · ' + days.length + ' day' + (days.length > 1 ? "s" : "") + '</p>' +
+      '</div>';
+
+    html += '<h3 class="sec">Day by day</h3>';
+    days.forEach(function (d) {
+      var j = d.judged;
+      html +=
+        '<div class="day ' + j.rating + '">' +
+          '<div class="top"><span class="date">' + esc(pretty(d.date)) + '</span>' +
+          '<span class="tag">' + esc(j.tag) + '</span></div>' +
+          '<p class="verdict">' + esc(j.verdict) + '</p>' +
+          '<p class="nums">' +
+            '<span>' + fmt(d.max, "°") + " / " + fmt(d.min, "°") + ' &nbsp;feels ' + fmt(d.feels, "°") + '</span>' +
+            '<span>rain ' + fmt(d.rainProb, "%") + (d.rainSum ? " · " + fmt(d.rainSum, "mm", 1) : "") + '</span>' +
+            '<span>UV ' + fmt(d.uv, "", 0) + '</span>' +
+            '<span>wind ' + fmt(d.wind, " km/h") + '</span>' +
+          '</p>' +
+        '</div>';
+    });
+
+    html += '<h3 class="sec">Pack this — once, for the whole trip</h3><div class="card pack"><ul>';
+    packing.forEach(function (p) {
+      html += '<li>' + esc(p.item) + (p.note ? ' <span>— ' + esc(p.note) + '</span>' : "") + '</li>';
+    });
+    html += '</ul>' +
+      '<p class="why">Built from every day\'s problems, then deduplicated. One umbrella, not five.</p></div>';
+
+    html +=
+      '<details><summary>How the verdicts are decided</summary>' +
+      '<p>Signals used: feels-like max, overnight min, rain probability, rain total, UV index, max wind, and hourly rain probability for timing. ' +
+      'Thresholds: rain likely at 55% or 4&nbsp;mm and a write-off at 15&nbsp;mm; hot at a 33°C feels-like and dangerous at 40°C; cold at a 4°C low and severe at −5°C; ' +
+      'windy at 32&nbsp;km/h and an umbrella-killer at 50&nbsp;km/h; UV worth mentioning at 7 and worth hiding from at 10. ' +
+      'When more than one thing goes wrong, we name the two worst and give the instruction that belongs to the worst of them — one sentence, one action. ' +
+      'Ignored on purpose: weather codes, humidity, snow depth and sunrise times, because they change the phrasing without changing what you do.</p></details>';
+
+    panel.innerHTML = html;
+    window.scrollTo({ top:0, behavior:"smooth" });
+  }
+
+  /* ---------- data ---------- */
+  function getJSON(url) {
+    var ctrl = new AbortController();
+    var timer = setTimeout(function () { ctrl.abort(); }, 12000);
+    return fetch(url, { signal:ctrl.signal })
+      .then(function (r) {
+        clearTimeout(timer);
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .catch(function (e) {
+        clearTimeout(timer);
+        throw e;
+      });
+  }
+
+  function geocode(name) {
+    return getJSON("https://geocoding-api.open-meteo.com/v1/search?name=" +
+      encodeURIComponent(name) + "&count=6&language=en&format=json")
+      .then(function (j) { return (j && j.results) || []; });
+  }
+
+  function forecast(place, start, end) {
+    var u = "https://api.open-meteo.com/v1/forecast" +
+      "?latitude=" + encodeURIComponent(place.latitude) +
+      "&longitude=" + encodeURIComponent(place.longitude) +
+      "&daily=temperature_2m_max,temperature_2m_min,apparent_temperature_max," +
+      "precipitation_probability_max,precipitation_sum,uv_index_max,wind_speed_10m_max" +
+      "&hourly=precipitation_probability" +
+      "&timezone=auto&start_date=" + start + "&end_date=" + end;
+    return getJSON(u);
+  }
+
+  function shape(j) {
+    var D = j && j.daily;
+    if (!D || !D.time || !D.time.length) return [];
+    var H = j.hourly || {};
+    return D.time.map(function (date, i) {
+      var d = {
+        date: date,
+        max:   num(D.temperature_2m_max[i]),
+        min:   num(D.temperature_2m_min[i]),
+        feels: num(D.apparent_temperature_max ? D.apparent_temperature_max[i] : null),
+        rainProb: num(D.precipitation_probability_max[i]),
+        rainSum:  num(D.precipitation_sum[i]),
+        uv:    num(D.uv_index_max[i]),
+        wind:  num(D.wind_speed_10m_max[i])
+      };
+      if (d.feels === null) d.feels = d.max;
+      // Missing values must never fire a rule: neutralise them.
+      if (d.max === null) d.max = 22;
+      if (d.min === null) d.min = 18;
+      if (d.feels === null) d.feels = 22;
+      if (d.rainProb === null) d.rainProb = 0;
+      if (d.rainSum === null) d.rainSum = 0;
+      if (d.uv === null) d.uv = 0;
+      if (d.wind === null) d.wind = 0;
+      d.blocks = blockWetness(H.time, H.precipitation_probability, date);
+      return d;
+    });
+  }
+
+  /* ---------- flow ---------- */
+  function validate() {
+    var city = cityEl.value.trim().replace(/\s+/g, " ");
+    if (city.length < 2) return { err:["Which city?", "Type a city name — two words like “New Delhi” or “San Jose” are fine."] };
+    if (!/[a-zA-ZÀ-ɏͰ-￿]/.test(city)) return { err:["That is not a city", "A city name needs letters in it."] };
+
+    var s = parseISO(startEl.value), e = parseISO(endEl.value);
+    if (!s || !e) return { err:["Those dates don't parse", "Pick a first and last day for the trip."] };
+    if (s < T) return { err:["That start date is in the past", "We forecast forwards only. Pick today or later."] };
+    if (e < s) return { err:["The last day is before the first", "Flip the two dates and try again."] };
+    if (e > LIMIT) return { err:["Too far ahead", "The forecast is only honest for about two weeks. Pick a last day on or before " + pretty(iso(LIMIT)) + ".",
+      ["Anything beyond that is climate averages dressed up as a forecast, and we would rather not."]] };
+    return { city:city, start:iso(s), end:iso(e), days:dayCount(s, e) };
+  }
+
+  function run() {
+    var v = validate();
+    if (v.err) { renderError(v.err[0], v.err[1], v.err[2]); return; }
+
+    submitEl.disabled = true;
+    renderLoading(0);
+
+    geocode(v.city).then(function (results) {
+      if (!results.length) {
+        submitEl.disabled = false;
+        renderError("We can't find “" + v.city + "”",
+          "No place by that name came back from the geocoder.",
+          ["Check the spelling.", "Try the English name, or add the country: “Cordoba, Spain”.", "Very small villages may not be listed — try the nearest town."]);
+        return;
+      }
+      // Never silently pick the first result when the name is ambiguous.
+      // Accent-insensitive so "Sao Paulo" matches "São Paulo" instead of
+      // dumping the user into a picker full of unrelated Brazilian towns.
+      var norm = function (s) {
+        return s.toLowerCase().normalize ? s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : s.toLowerCase();
+      };
+      var exact = results.filter(function (r) { return norm(r.name) === norm(v.city); });
+      var pool = exact.length ? exact : results;
+      if (pool.length === 1) return load(pool[0], v);
+      submitEl.disabled = false;
+      renderPicker(pool.slice(0, 6), function (p) { submitEl.disabled = true; load(p, v); });
+    }).catch(function (e) {
+      submitEl.disabled = false;
+      renderError("Couldn't reach the location service",
+        e && e.name === "AbortError" ? "The lookup took too long and we stopped waiting." : "The geocoding API did not respond.",
+        ["Check your connection and press the button again."]);
+    });
+  }
+
+  function load(place, v) {
+    renderLoading(1);
+    forecast(place, v.start, v.end).then(function (j) {
+      renderLoading(2);
+      var days = shape(j);
+      if (!days.length) {
+        submitEl.disabled = false;
+        renderError("No forecast for those dates",
+          "The provider returned nothing for " + pretty(v.start) + " to " + pretty(v.end) + ".",
+          ["Try a shorter range closer to today."]);
+        return;
+      }
+      days.forEach(function (d) { d.judged = judge(d); });
+      var lo = Math.min.apply(null, days.map(function (d) { return d.min; }));
+      var hi = Math.max.apply(null, days.map(function (d) { return d.max; }));
+      var sum = summarise(days, place);
+      var packing = buildPacking(days, hi - lo);
+      submitEl.disabled = false;
+      renderResults(place, days, sum, packing);
+    }).catch(function (e) {
+      submitEl.disabled = false;
+      renderError("The forecast didn't come back",
+        e && e.name === "AbortError" ? "The forecast request timed out." : "Open-Meteo returned an error for " + placeLabel(place) + ".",
+        ["This is usually temporary — try the button again in a moment."]);
+    });
+  }
+
+  form.addEventListener("submit", function (ev) { ev.preventDefault(); run(); });
+  startEl.addEventListener("change", function () {
+    var s = parseISO(startEl.value), e = parseISO(endEl.value);
+    if (s && (!e || e < s)) endEl.value = iso(s < LIMIT ? s : LIMIT);
+  });
+
+  renderEmpty();
+})();
+</script>
+</body>
+</html>
