@@ -583,8 +583,8 @@
     if (poor === 0 && mixed === 0) head = n === 1 ? "This looks like a good day for it." : "This is a good window — all " + n + " days are yours to spend outside.";
     else if (poor === 0) head = good + " of " + n + " days are clear, the rest just need planning around.";
     else if (poor >= n - poor) head = "A rough window — " + poor + " of " + n + " days will push you indoors.";
-    else if (good === 0) head = "No standout days, but nothing lost either — " + mixed + " are workable with a plan and " + poor + " " + (poor === 1 ? "is" : "are") + " best spent indoors.";
-    else head = good + " clear " + (good === 1 ? "day" : "days") + ", " + mixed + " workable, " + poor + " to write off outdoors.";
+    else if (good === 0) head = "No standout days, but nothing lost either — " + mixed + " to plan around and " + poor + " " + (poor === 1 ? "is" : "are") + " best spent indoors.";
+    else head = good + " clear " + (good === 1 ? "day" : "days") + ", " + mixed + " to plan around, " + poor + " best spent indoors.";
 
     var tail = themeWord ? " " + (poor + mixed > 1 ? "The recurring problem is " : "The thing to plan for is ") + themeWord + "." : "";
     return { head:head + tail, good:good, mixed:mixed, poor:poor };
